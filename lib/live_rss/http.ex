@@ -5,19 +5,26 @@ defmodule LiveRSS.HTTP do
 
   require Logger
 
-  @spec get(String.t()) :: {:ok, %FeederEx.Feed{}} | :error
+  @spec get(String.t()) :: {:ok, %{}} | :error
   @doc """
-  Returns a %FeederEx.Feed{} struct from a RSS feed URL. Returns {:ok, %FeederEx.Feed{}} or
+  Returns a %{} map from a RSS feed URL. Returns {:ok, %{}} or
   logs the error returning :error.
   """
   def get(feed_url) do
-    with {:ok, {{_, status, _}, _headers, body}} <- :httpc.request(feed_url),
-         status when status in 200..299 <- status,
-         {:ok, %FeederEx.Feed{} = feed, _} <- FeederEx.parse(body) do
-      {:ok, feed}
-    else
-      error ->
-        Logger.error("LiveRSS: failed to get feed. Reason: #{inspect(error)}")
+    try do
+      with {:ok, {{_, status, _}, _headers, body}} <-
+             :httpc.request(:get, {feed_url, []}, [ssl: :httpc.ssl_verify_host_options(true)], []),
+           status when status in 200..299 <- status,
+           {:ok, %{} = feed} <- FastRSS.parse_rss(IO.iodata_to_binary(body)) do
+        {:ok, feed}
+      else
+        error ->
+          Logger.error("LiveRSS: failed to get feed. Reason: #{inspect(error)}")
+          :error
+      end
+    rescue
+      ArgumentError ->
+        Logger.error("LiveRSS: failed to get feed. Reason: Not XML")
         :error
     end
   end

@@ -5,7 +5,7 @@ defmodule LiveRSS.MixProject do
     [
       app: :liverss,
       version: "0.1.0",
-      elixir: "~> 1.13",
+      elixir: "~> 1.17",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       package: [
@@ -27,15 +27,15 @@ defmodule LiveRSS.MixProject do
   # Run "mix help compile.app" to learn about applications.
   def application do
     [
-      applications: [:inets, :ssl],
-      extra_applications: [:logger, :feeder_ex]
+      # applications: [:inets, :ssl],
+      extra_applications: [:logger, :inets, :ssl]
     ]
   end
 
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:feeder_ex, "~> 1.1"},
+      {:fast_rss, "~> 0.5.0"},
       {:ex_doc, ">= 0.0.0", only: [:dev], runtime: false}
     ]
   end

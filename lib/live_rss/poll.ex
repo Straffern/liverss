@@ -7,7 +7,7 @@ defmodule LiveRSS.Poll do
   LiveRSS.Poll.start_link(name: :live_rss_videos, url: "https://videos.test/feed.rss", refresh_every: :timer.hours(1))
   LiveRSS.Poll.start_link(name: :live_rss_photos, url: "https://photos.test/feed.rss", refresh_every: :timer.minutes(10))
 
-  %FeederEx.Feed{} = LiveRSS.get(:live_rss_blog)
+  %{} = LiveRSS.get(:live_rss_blog)
   ```
 
   Use `LiveRSS.Poll.start_link/1` to start the GenServer. You can use the following
@@ -16,7 +16,7 @@ defmodule LiveRSS.Poll do
   * `url`: the URL of the RSS feed
   * `refresh_every`: the frequency the feed will be fetched by the GenServer
 
-  You can use `LiveRSS.get/1` to retrieve the feed as a `%FeederEx.Feed{}` struct.
+  You can use `LiveRSS.get/1` to retrieve the feed as a `%{}` map.
   """
 
   require Logger
@@ -49,10 +49,10 @@ defmodule LiveRSS.Poll do
   end
 
   @doc """
-  Returns a `%FeederEx.Feed{}`. If the feed fails to be fetched, it returns nil and logs
+  Returns a `%{}`. If the feed fails to be fetched, it returns nil and logs
   error.
   """
-  @spec get(atom()) :: %FeederEx.Feed{} | nil
+  @spec get(atom()) :: %{} | nil
   def get(process_name) do
     process_name
     |> Process.whereis()
@@ -74,7 +74,7 @@ defmodule LiveRSS.Poll do
   @impl true
   def handle_call(:get_feed, _from, state) do
     case state[:feed] do
-      %FeederEx.Feed{} = feed ->
+      %{} = feed ->
         {:reply, feed, state}
 
       nil ->
@@ -97,7 +97,7 @@ defmodule LiveRSS.Poll do
 
   defp put_feed(state) do
     case LiveRSS.HTTP.get(state[:url]) do
-      {:ok, %FeederEx.Feed{} = feed} ->
+      {:ok, %{} = feed} ->
         Logger.info("LiveRSS: Updated #{state[:name]} data")
         Keyword.put(state, :feed, feed)
 
