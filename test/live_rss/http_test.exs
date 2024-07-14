@@ -6,13 +6,13 @@ defmodule LiveRSS.HTTPTest do
     assert {:ok, feed} =
              LiveRSS.HTTP.get("https://rss.nytimes.com/services/xml/rss/nyt/World.xml")
 
-    assert %FeederEx.Feed{title: "NYT > World News"} = feed
+    assert %{"image" => %{"title" => "NYT > World News"}} = feed
   end
 
   test "get/1 when body is not rss returns error" do
     assert capture_log(fn ->
              assert :error = LiveRSS.HTTP.get("https://google.com/")
-           end) =~ "LiveRSS: failed to get feed. Reason: {:fatal_error"
+           end) =~ "LiveRSS: failed to get feed. Reason: Not XML"
   end
 
   test "get/1 when request fails returns error" do

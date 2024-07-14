@@ -29,7 +29,7 @@ defmodule LiveRSS.PollTest do
 
     :erlang.trace(pid, true, [:receive])
     assert_receive {:trace, ^pid, :receive, :poll}, 150
-    assert %FeederEx.Feed{} = LiveRSS.Poll.get(:rss_nyt)
+    assert %{} = LiveRSS.Poll.get(:rss_nyt)
     Process.exit(pid, :normal)
   end
 
@@ -40,7 +40,7 @@ defmodule LiveRSS.PollTest do
                name: :rss_nyt
              )
 
-    assert %FeederEx.Feed{} = LiveRSS.Poll.get(:rss_nyt)
+    assert %{} = LiveRSS.Poll.get(:rss_nyt)
     Process.exit(pid, :normal)
   end
 end
