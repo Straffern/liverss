@@ -15,18 +15,18 @@ defmodule LiveRSS.Poll do
   * `name`: the atom name of the process that will be used to retrieve the feed later
   * `url`: the URL of the RSS feed
   * `refresh_every`: the frequency the feed will be fetched by the GenServer
+  * broadcast_changes: A tuple with a Registry register and event key to broadcast to.
 
   You can use `LiveRSS.get/1` to retrieve the feed as a `%{}` map.
   """
 
-  require Logger
   use GenServer
+  require Logger
 
   def start_link(opts) do
     with :ok <- validate_uri(opts),
          {:ok, name} <- validate_name(opts),
-         {:ok, pid} <- GenServer.start_link(__MODULE__, opts, name: name),
-         do: {:ok, pid}
+         do: GenServer.start_link(__MODULE__, opts, name: name)
   end
 
   defp validate_name(opts) do
@@ -59,13 +59,13 @@ defmodule LiveRSS.Poll do
     |> GenServer.call(:get_feed)
   end
 
-  @default_state [refresh_every: :timer.hours(1), url: nil, feed: nil]
+  @default_state [refresh_every: :timer.hours(1), url: nil, feed: nil, broadcast_changes: nil]
 
   @impl true
   def init(state) do
     Logger.info("LiveRSS: Started #{state[:name]} polling every #{state[:refresh_every]}ms")
 
-    state = Keyword.merge(@default_state, state)
+    state = Keyword.merge(@default_state, state) |> Map.new()
     schedule_polling(state)
 
     {:ok, state}
@@ -97,12 +97,39 @@ defmodule LiveRSS.Poll do
 
   defp put_feed(state) do
     case LiveRSS.HTTP.get(state[:url]) do
-      {:ok, %{} = feed} ->
+      {:ok, %{} = new_feed} ->
         Logger.info("LiveRSS: Updated #{state[:name]} data")
-        Keyword.put(state, :feed, feed)
+        broadcast_if_enabled(state, new_feed)
+        Map.put(state, :feed, new_feed)
 
       _any ->
         state
     end
+  end
+
+  defp broadcast_if_enabled(%{broadcast_changes: nil} = _state, _new_feed), do: :ok
+
+  defp broadcast_if_enabled(state, new_feed) do
+    diff = diff_feeds(state[:feed], new_feed)
+
+    broadcast(diff, state)
+  end
+
+  defp diff_feeds(previous, new) do
+    previous_set = MapSet.new(previous["itmes"])
+    new_set = MapSet.new(new["itmes"])
+
+    MapSet.difference(new_set, previous_set) |> MapSet.to_list()
+  end
+
+  @spec broadcast([], %{}) :: :ok
+  defp broadcast([], _state), do: :ok
+
+  defp broadcast(changes, state) do
+    {register, key} = state[:broadcast_changes]
+
+    Registry.dispatch(register, key, fn entries ->
+      for {pid, _} <- entries, do: send(pid, {:livefeed_broadcast, changes})
+    end)
   end
 end
