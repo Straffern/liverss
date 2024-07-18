@@ -21,7 +21,7 @@ defmodule LiveRSS.HTTP do
         Logger.error("LiveRSS: failed to get feed. Reason: #{inspect(error)}")
         :error
     end
-  catch
+  rescue
     ArgumentError ->
       Logger.error("LiveRSS: failed to get feed. Reason: Not XML")
       :error
