@@ -15,7 +15,7 @@ defmodule LiveRSS.Poll do
   * `name`: the atom name of the process that will be used to retrieve the feed later
   * `url`: the URL of the RSS feed
   * `refresh_every`: the frequency the feed will be fetched by the GenServer
-  * broadcast_changes: A tuple with a Registry register and event key to broadcast to.
+  * notify: GenServer.name()
 
   You can use `LiveRSS.get/1` to retrieve the feed as a `%{}` map.
   """
@@ -59,7 +59,7 @@ defmodule LiveRSS.Poll do
     |> GenServer.call(:get_feed)
   end
 
-  @default_state [refresh_every: :timer.hours(1), url: nil, feed: nil, broadcast_changes: nil]
+  @default_state [refresh_every: :timer.hours(1), url: nil, feed: nil, notify: nil]
 
   @impl true
   def init(state) do
@@ -99,7 +99,7 @@ defmodule LiveRSS.Poll do
     case LiveRSS.HTTP.get(state[:url]) do
       {:ok, %{} = new_feed} ->
         Logger.info("LiveRSS: Updated #{state[:name]} data")
-        broadcast_if_enabled(state, new_feed)
+        notify_if_enabled(state, new_feed)
         Map.put(state, :feed, new_feed)
 
       _any ->
@@ -107,12 +107,12 @@ defmodule LiveRSS.Poll do
     end
   end
 
-  defp broadcast_if_enabled(%{broadcast_changes: nil} = _state, _new_feed), do: :ok
+  defp notify_if_enabled(%{notify: nil} = _state, _new_feed), do: :ok
 
-  defp broadcast_if_enabled(state, new_feed) do
+  defp notify_if_enabled(%{notify: server} = state, new_feed) do
     diff = diff_feeds(state[:feed], new_feed)
 
-    broadcast(diff, state)
+    notify(server, diff)
   end
 
   defp diff_feeds(previous, new) do
@@ -122,14 +122,39 @@ defmodule LiveRSS.Poll do
     MapSet.difference(new_set, previous_set) |> MapSet.to_list()
   end
 
-  @spec broadcast([], %{}) :: :ok
-  defp broadcast([], _state), do: :ok
+  @spec notify(%{}, [term()]) :: :ok
+  defp notify(server, request)
 
-  defp broadcast(changes, state) do
-    {register, key} = state[:broadcast_changes]
+  defp notify(_server, []), do: :ok
 
-    Registry.dispatch(register, key, fn entries ->
-      for {pid, _} <- entries, do: send(pid, {:livefeed_broadcast, changes})
-    end)
+  defp notify({:global, name}, request) do
+    :global.send(name, request)
+    :ok
+  catch
+    _, _ -> :ok
+  end
+
+  defp notify({:via, mod, name}, request) do
+    mod.send(name, notify_msg(request))
+    :ok
+  catch
+    _, _ -> :ok
+  end
+
+  defp notify({name, node}, request) when is_atom(name) and is_atom(node),
+    do: do_send({name, node}, notify_msg(request))
+
+  defp notify(dest, request) when is_atom(dest) or is_pid(dest),
+    do: do_send(dest, notify_msg(request))
+
+  defp notify_msg(request) do
+    {:liverss_notify, request}
+  end
+
+  defp do_send(dest, msg) do
+    send(dest, msg)
+    :ok
+  catch
+    _, _ -> :ok
   end
 end
