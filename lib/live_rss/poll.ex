@@ -108,6 +108,7 @@ defmodule LiveRSS.Poll do
   end
 
   defp notify_if_enabled(%{on_cov: nil} = _state, _new_feed), do: :ok
+  defp notify_if_enabled(%{feed: nil} = _state, _new_feed), do: :ok
 
   defp notify_if_enabled(%{on_cov: callback} = state, new_feed) do
     diff = diff_feeds(state[:feed], new_feed)
