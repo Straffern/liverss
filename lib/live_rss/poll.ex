@@ -116,8 +116,8 @@ defmodule LiveRSS.Poll do
   end
 
   defp diff_feeds(previous, new) do
-    previous_set = MapSet.new(previous["itmes"])
-    new_set = MapSet.new(new["itmes"])
+    previous_set = MapSet.new(previous["items"])
+    new_set = MapSet.new(new["items"])
 
     MapSet.difference(new_set, previous_set) |> MapSet.to_list()
   end
