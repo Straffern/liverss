@@ -123,7 +123,7 @@ defmodule LiveRSS.Poll do
     MapSet.difference(new_set, previous_set) |> MapSet.to_list()
   end
 
-  @spec notify(([] -> :ok), [term()]) :: :ok
+  @spec notify(([term()] -> :ok), [term()]) :: :ok
   defp notify(callback, values)
 
   defp notify(_callback, []), do: :ok

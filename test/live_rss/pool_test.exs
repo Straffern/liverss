@@ -1,4 +1,5 @@
 defmodule LiveRSS.PollTest do
+  @moduledoc false
   use ExUnit.Case
 
   test "start_link/1 validates uri without scheme" do
